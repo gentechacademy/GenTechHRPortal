@@ -1,0 +1,18 @@
+--- a/frontend/src/pages/AdminDashboard.js
++++ b/frontend/src/pages/AdminDashboard.js
+@@ -1231,11 +1231,13 @@ const SalaryManagement = () => {
+     }
+   };
+ 
+-  // Client-side filter for employee and status only (month/year already filtered by API)
++  // Client-side filter for all filter criteria
+   const filteredSlips = generatedSlips.filter(slip => {
+     const matchEmployee = !filterEmployee || slip.employeeId?.toString() === filterEmployee;
++    const matchMonth = !filterMonth || slip.month?.toString() === filterMonth;
++    const matchYear = !filterYear || slip.year?.toString() === filterYear;
+     const matchStatus = filterStatus === 'ALL' || slip.status === filterStatus;
+-    return matchEmployee && matchStatus;
++    return matchEmployee && matchMonth && matchYear && matchStatus;
+   });
+ 
+   const months = [

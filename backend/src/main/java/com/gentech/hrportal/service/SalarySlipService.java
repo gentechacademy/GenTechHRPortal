@@ -1,0 +1,414 @@
+package com.gentech.hrportal.service;
+
+import com.gentech.hrportal.dto.SalarySlipRequest;
+import com.gentech.hrportal.dto.SalarySlipResponse;
+import com.gentech.hrportal.entity.Company;
+import com.gentech.hrportal.entity.SalarySlip;
+import com.gentech.hrportal.entity.SalarySlip.SalarySlipStatus;
+import com.gentech.hrportal.entity.User;
+import com.gentech.hrportal.entity.BonusRequest.BonusStatus;
+import com.gentech.hrportal.entity.EmployeeProfile;
+import com.gentech.hrportal.repository.BonusRequestRepository;
+import com.gentech.hrportal.repository.CompanyRepository;
+import com.gentech.hrportal.repository.EmployeeProfileRepository;
+import com.gentech.hrportal.repository.SalarySlipRepository;
+import com.gentech.hrportal.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+public class SalarySlipService {
+
+    @Autowired
+    private SalarySlipRepository salarySlipRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private CompanyRepository companyRepository;
+
+    @Autowired
+    private PdfGenerationService pdfGenerationService;
+
+    @Autowired
+    private EmployeeProfileRepository employeeProfileRepository;
+
+    @Autowired
+    private BonusRequestService bonusRequestService;
+
+    @Autowired
+    private BonusRequestRepository bonusRequestRepository;
+
+    @Autowired
+    private EmailService emailService;
+
+    /**
+     * Generate a new salary slip
+     */
+    @Transactional
+    public SalarySlipResponse generateSalarySlip(SalarySlipRequest request, Long generatedById) {
+        // Validate employee
+        if (request.getEmployeeId() == null) {
+            throw new RuntimeException("Employee ID is required");
+        }
+
+        User employee = userRepository.findById(request.getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + request.getEmployeeId()));
+
+        // Ensure company is loaded (handle lazy loading)
+        Company employeeCompany = employee.getCompany();
+        System.out.println("DEBUG: Employee ID=" + employee.getId() + ", Username=" + employee.getUsername()
+                + ", Company=" + employeeCompany);
+        if (employeeCompany == null) {
+            // Try to get company from employee profile
+            System.out.println("DEBUG: Looking for profile with userId=" + employee.getId());
+            Optional<EmployeeProfile> profileOpt = employeeProfileRepository.findByUserId(employee.getId());
+            System.out.println("DEBUG: Profile found=" + profileOpt.isPresent());
+            EmployeeProfile profile = profileOpt.orElse(null);
+            if (profile != null) {
+                System.out
+                        .println("DEBUG: Profile ID=" + profile.getId() + ", Profile Company=" + profile.getCompany());
+            }
+            if (profile != null && profile.getCompany() != null) {
+                employeeCompany = profile.getCompany();
+                employee.setCompany(employeeCompany); // Update user for consistency
+                userRepository.save(employee);
+                System.out.println("DEBUG: Fixed company for employee " + employee.getUsername());
+            } else {
+                throw new RuntimeException("Employee is not associated with any company");
+            }
+        }
+
+        // Validate month and year
+        if (request.getMonth() == null || request.getYear() == null) {
+            throw new RuntimeException("Month and year are required");
+        }
+
+        if (request.getMonth() < 1 || request.getMonth() > 12) {
+            throw new RuntimeException("Month must be between 1 and 12");
+        }
+
+        // Check if salary slip already exists
+        if (checkIfSalarySlipExists(request.getEmployeeId(), request.getMonth(), request.getYear())) {
+            throw new RuntimeException("Salary slip already exists for this employee for the specified month and year");
+        }
+
+        // Check if there's a pending bonus request for this employee/month/year
+        boolean hasPendingBonus = bonusRequestRepository.existsByEmployeeIdAndMonthAndYearAndStatus(
+                request.getEmployeeId(), request.getMonth(), request.getYear(), BonusStatus.PENDING);
+        if (hasPendingBonus) {
+            throw new RuntimeException("Cannot generate salary slip: There is a pending bonus request for this employee for the specified month and year. Please approve or reject the bonus request first.");
+        }
+
+        // Validate basic salary
+        if (request.getBasicSalary() == null || request.getBasicSalary() < 0) {
+            throw new RuntimeException("Basic salary is required and must be non-negative");
+        }
+
+        // Get generated by user
+        User generatedBy = userRepository.findById(generatedById)
+                .orElseThrow(() -> new RuntimeException("Generator user not found with ID: " + generatedById));
+
+        // Create salary slip - entity will auto-calculate salary components via
+        // @PrePersist
+        SalarySlip salarySlip = new SalarySlip();
+        salarySlip.setEmployee(employee);
+        salarySlip.setCompany(employeeCompany);
+        salarySlip.setMonth(request.getMonth());
+        salarySlip.setYear(request.getYear());
+
+        // Set earnings
+        salarySlip.setBasicSalary(request.getBasicSalary());
+        salarySlip.setHra(getOrDefault(request.getHra()));
+        salarySlip.setDa(getOrDefault(request.getDa()));
+        salarySlip.setSpecialAllowance(getOrDefault(request.getSpecialAllowance()));
+        salarySlip.setConveyance(getOrDefault(request.getConveyance()));
+        salarySlip.setMedical(getOrDefault(request.getMedical()));
+        salarySlip.setOtherAllowances(getOrDefault(request.getOtherAllowances()));
+        
+        // Set bonus - from request or auto-fetch approved bonus for this month/year
+        Double bonusAmount = request.getBonus();
+        if (bonusAmount == null || bonusAmount == 0.0) {
+            // Try to fetch approved bonus for this employee/month/year
+            bonusAmount = bonusRequestService.getTotalApprovedBonusForEmployeeMonth(
+                    request.getEmployeeId(), request.getMonth(), request.getYear());
+        }
+        salarySlip.setBonus(bonusAmount);
+
+        // Set deductions
+        salarySlip.setPf(getOrDefault(request.getPf()));
+        salarySlip.setIncomeTax(getOrDefault(request.getIncomeTax()));
+        salarySlip.setProfessionalTax(getOrDefault(request.getProfessionalTax()));
+        salarySlip.setOtherDeductions(getOrDefault(request.getOtherDeductions()));
+
+        // Set status and metadata
+        salarySlip.setStatus(SalarySlipStatus.GENERATED);
+        salarySlip.setGeneratedBy(generatedBy);
+        salarySlip.setGeneratedDate(LocalDateTime.now());
+
+        SalarySlip savedSlip = salarySlipRepository.save(salarySlip);
+
+        // Generate PDF
+        try {
+            String pdfPath = pdfGenerationService.generateSalarySlipPdf(savedSlip);
+            savedSlip.setPdfUrl(pdfPath);
+            savedSlip = salarySlipRepository.save(savedSlip);
+        } catch (Exception e) {
+            // Log error but don't fail the transaction - PDF can be regenerated later
+            System.err.println(
+                    "Failed to generate PDF for salary slip ID: " + savedSlip.getId() + ". Error: " + e.getMessage());
+        }
+
+        return new SalarySlipResponse(savedSlip);
+    }
+
+    /**
+     * Get all salary slips for an employee
+     */
+    public List<SalarySlipResponse> getEmployeeSalarySlips(Long employeeId) {
+        List<SalarySlip> slips = salarySlipRepository.findByEmployeeId(employeeId);
+        return slips.stream()
+                .map(SalarySlipResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get salary slip for a specific month
+     */
+    public SalarySlipResponse getEmployeeSalarySlipForMonth(Long employeeId, Integer month, Integer year) {
+        SalarySlip slip = salarySlipRepository.findByEmployeeIdAndMonthAndYear(employeeId, month, year)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found for the specified month and year"));
+        return new SalarySlipResponse(slip);
+    }
+
+    /**
+     * Get all salary slips for a company in a given month/year
+     */
+    public List<SalarySlipResponse> getCompanySalarySlips(Long companyId, Integer month, Integer year) {
+        List<SalarySlip> slips = salarySlipRepository.findByCompanyIdAndMonthAndYear(companyId, month, year);
+        return slips.stream()
+                .map(SalarySlipResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all salary slips for a given month/year
+     */
+    public List<SalarySlipResponse> getAllSalarySlipsForMonth(Integer month, Integer year) {
+        List<SalarySlip> slips = salarySlipRepository.findByMonthAndYear(month, year);
+        return slips.stream()
+                .map(SalarySlipResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Check if salary slip exists for employee in given month/year
+     */
+    public boolean checkIfSalarySlipExists(Long employeeId, Integer month, Integer year) {
+        return salarySlipRepository.existsByEmployeeIdAndMonthAndYear(employeeId, month, year);
+    }
+
+    /**
+     * Update salary slip status
+     */
+    @Transactional
+    public SalarySlipResponse updateSalarySlipStatus(Long slipId, SalarySlipStatus status) {
+        SalarySlip salarySlip = salarySlipRepository.findById(slipId)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + slipId));
+
+        salarySlip.setStatus(status);
+        salarySlip.setUpdatedAt(LocalDateTime.now());
+
+        SalarySlip updatedSlip = salarySlipRepository.save(salarySlip);
+        return new SalarySlipResponse(updatedSlip);
+    }
+
+    /**
+     * Get salary slip by ID
+     */
+    public SalarySlipResponse getSalarySlipById(Long id) {
+        SalarySlip slip = salarySlipRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + id));
+        return new SalarySlipResponse(slip);
+    }
+
+    /**
+     * Get raw salary slip entity by ID (for internal use)
+     */
+    public SalarySlip getSalarySlipEntityById(Long id) {
+        return salarySlipRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + id));
+    }
+
+    /**
+     * Calculate salary components for preview
+     */
+    public Map<String, Double> calculateSalaryComponents(SalarySlipRequest request) {
+        Map<String, Double> result = new HashMap<>();
+
+        // Calculate gross salary
+        double grossSalary = getOrDefault(request.getBasicSalary());
+        grossSalary += getOrDefault(request.getHra());
+        grossSalary += getOrDefault(request.getDa());
+        grossSalary += getOrDefault(request.getSpecialAllowance());
+        grossSalary += getOrDefault(request.getConveyance());
+        grossSalary += getOrDefault(request.getMedical());
+        grossSalary += getOrDefault(request.getOtherAllowances());
+        grossSalary += getOrDefault(request.getBonus());
+
+        // Calculate total deductions
+        double totalDeductions = getOrDefault(request.getPf());
+        totalDeductions += getOrDefault(request.getIncomeTax());
+        totalDeductions += getOrDefault(request.getProfessionalTax());
+        totalDeductions += getOrDefault(request.getOtherDeductions());
+
+        // Calculate net salary
+        double netSalary = grossSalary - totalDeductions;
+
+        result.put("basicSalary", getOrDefault(request.getBasicSalary()));
+        result.put("hra", getOrDefault(request.getHra()));
+        result.put("da", getOrDefault(request.getDa()));
+        result.put("specialAllowance", getOrDefault(request.getSpecialAllowance()));
+        result.put("conveyance", getOrDefault(request.getConveyance()));
+        result.put("medical", getOrDefault(request.getMedical()));
+        result.put("otherAllowances", getOrDefault(request.getOtherAllowances()));
+        result.put("bonus", getOrDefault(request.getBonus()));
+        result.put("grossSalary", grossSalary);
+        result.put("pf", getOrDefault(request.getPf()));
+        result.put("incomeTax", getOrDefault(request.getIncomeTax()));
+        result.put("professionalTax", getOrDefault(request.getProfessionalTax()));
+        result.put("otherDeductions", getOrDefault(request.getOtherDeductions()));
+        result.put("totalDeductions", totalDeductions);
+        result.put("netSalary", netSalary);
+
+        return result;
+    }
+
+    /**
+     * Create a SalarySlipRequest with auto-calculated salary components based on
+     * employee's profile salary
+     * Calculation rules:
+     * - Basic = profile salary
+     * - HRA = 40% of basic
+     * - DA = 20% of basic
+     * - Special Allowance = 15% of basic
+     * - Conveyance = 5000
+     * - Medical = 5000
+     * - Other Allowances = 3000
+     * - PF = 12% of basic
+     * - Professional Tax = 200
+     * - Income Tax = 10% of basic
+     */
+    public SalarySlipRequest createAutoCalculatedSlipRequest(Long employeeId, Integer month, Integer year) {
+        // Get employee profile to retrieve salary
+        EmployeeProfile profile = employeeProfileRepository.findByUserId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee profile not found for ID: " + employeeId));
+
+        if (profile.getSalary() == null || profile.getSalary() <= 0) {
+            throw new RuntimeException(
+                    "Employee does not have a valid salary in profile. Please update profile first.");
+        }
+
+        double baseSalary = profile.getSalary();
+
+        SalarySlipRequest request = new SalarySlipRequest();
+        request.setEmployeeId(employeeId);
+        request.setMonth(month);
+        request.setYear(year);
+
+        // Set earnings with auto-calculated values
+        request.setBasicSalary(baseSalary);
+        request.setHra(baseSalary * 0.40); // 40% of basic
+        request.setDa(baseSalary * 0.20); // 20% of basic
+        request.setSpecialAllowance(baseSalary * 0.15); // 15% of basic
+        request.setConveyance(5000.0); // Fixed
+        request.setMedical(5000.0); // Fixed
+        request.setOtherAllowances(3000.0); // Fixed
+
+        // Fetch approved bonus for this employee/month/year
+        Double approvedBonus = bonusRequestService.getTotalApprovedBonusForEmployeeMonth(
+                employeeId, month, year);
+        request.setBonus(approvedBonus);
+
+        // Set deductions with auto-calculated values
+        request.setPf(baseSalary * 0.12); // 12% of basic
+        request.setProfessionalTax(200.0); // Fixed
+        request.setIncomeTax(baseSalary * 0.10); // 10% of basic
+        request.setOtherDeductions(0.0);
+
+        return request;
+    }
+
+    /**
+     * Helper method to get value or default to 0.0
+     */
+    private Double getOrDefault(Double value) {
+        return value != null ? value : 0.0;
+    }
+
+    /**
+     * Get all salary slips (for admin view)
+     */
+    public List<SalarySlipResponse> getAllSalarySlips() {
+        List<SalarySlip> slips = salarySlipRepository.findAll();
+        return slips.stream()
+                .map(SalarySlipResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Delete a salary slip by ID
+     */
+    @Transactional
+    public void deleteSalarySlip(Long id) {
+        SalarySlip slip = salarySlipRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + id));
+        salarySlipRepository.delete(slip);
+    }
+
+    /**
+     * Send salary slip via email (stub - logs to console if email not configured)
+     */
+    public void sendSalarySlipEmail(Long id) {
+        SalarySlip slip = salarySlipRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + id));
+        
+        // Get employee email
+        String employeeEmail = slip.getEmployee().getEmail();
+        if (employeeEmail == null || employeeEmail.isEmpty()) {
+            throw new RuntimeException("Employee does not have an email address configured");
+        }
+        
+        // Generate PDF
+        byte[] pdfBytes;
+        try {
+            if (slip.getPdfUrl() != null && !slip.getPdfUrl().isEmpty()) {
+                pdfBytes = pdfGenerationService.getPdfBytesByPath(slip.getPdfUrl());
+            } else {
+                // Generate PDF on-the-fly if not exists
+                String pdfPath = pdfGenerationService.generateSalarySlipPdf(slip);
+                pdfBytes = pdfGenerationService.getPdfBytesByPath(pdfPath);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate PDF for salary slip: " + e.getMessage());
+        }
+        
+        // Send email with PDF attachment
+        emailService.sendSalarySlipEmail(slip, pdfBytes);
+        
+        // Update status to SENT
+        slip.setStatus(SalarySlipStatus.SENT);
+        salarySlipRepository.save(slip);
+        
+        System.out.println("✅ Salary slip email sent successfully to: " + employeeEmail);
+    }
+}
