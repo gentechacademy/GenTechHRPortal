@@ -1,5 +1,9 @@
-
-#BackEnd
 backend/target/
-#FrontEnd
+
 frontend/node_modules/
+build/
+dist/
+
+.vscode/
+.idea/
+*.iml
