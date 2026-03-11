@@ -246,10 +246,10 @@ const MyProfile = () => {
   }
 
   const fullProfilePicUrl = profile.profilePictureUrl 
-    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `http://localhost:8080${profile.profilePictureUrl}`)
+    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `https://gentechhrportal.onrender.com${profile.profilePictureUrl}`)
     : null;
   const fullCompanyLogoUrl = profile.companyLogoUrl
-    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `http://localhost:8080${profile.companyLogoUrl}`)
+    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `https://gentechhrportal.onrender.com/${profile.companyLogoUrl}`)
     : null;
 
   const pendingRequests = editRequests.filter(r => r.status === 'PENDING');

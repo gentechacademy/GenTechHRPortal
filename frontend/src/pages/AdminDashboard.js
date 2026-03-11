@@ -2557,7 +2557,7 @@ const ManageEmployees = () => {
                 <div style={styles.previewContainer}>
                   {(() => {
                     const displayUrl = previewUrl || (formData.profilePictureUrl
-                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `http://localhost:8080${formData.profilePictureUrl}`)
+                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `https://gentechhrportal.onrender.com/${formData.profilePictureUrl}`)
                       : null);
                     return displayUrl ? (
                       <img
@@ -2624,7 +2624,7 @@ const ManageEmployees = () => {
           <tbody>
             {employees.map((emp) => {
               const fullImageUrl = emp.profilePictureUrl
-                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `http://localhost:8080${emp.profilePictureUrl}`)
+                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `https://gentechhrportal.onrender.com${emp.profilePictureUrl}`)
                 : null;
               return (
                 <tr key={emp.id} style={styles.tr}>
