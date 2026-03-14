@@ -15,6 +15,7 @@ com\gentech\hrportal\security\JwtUtils.class
 com\gentech\hrportal\entity\Leave$LeaveStatus.class
 com\gentech\hrportal\entity\Leave$LeaveType.class
 com\gentech\hrportal\repository\UserRepository.class
+com\gentech\hrportal\config\SwaggerSecurityConfig.class
 com\gentech\hrportal\config\WebConfig.class
 com\gentech\hrportal\dto\LoginRequest.class
 com\gentech\hrportal\entity\Company$Builder.class
