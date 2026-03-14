@@ -11,17 +11,7 @@ const ForgotPasswordPage = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [maskedEmail, setMaskedEmail] = useState('');
 
-  const maskEmail = (email) => {
-    if (!email) return '';
-    const [localPart, domain] = email.split('@');
-    if (localPart.length <= 2) {
-      return '*'.repeat(localPart.length) + '@' + domain;
-    }
-    const maskedLocal = localPart.substring(0, 2) + '*'.repeat(localPart.length - 2);
-    return maskedLocal + '@' + domain;
-  };
 
   const handleUsernameSubmit = async (e) => {
     e.preventDefault();
@@ -29,16 +19,6 @@ const ForgotPasswordPage = () => {
 
     try {
       const response = await api.post('/auth/forgot-password', { username });
-      
-      // Try to get user email to show masked version (optional enhancement)
-      try {
-        const userResponse = await api.get(`/employee/profile/${username}`);
-        if (userResponse.data && userResponse.data.email) {
-          setMaskedEmail(maskEmail(userResponse.data.email));
-        }
-      } catch (e) {
-        // Ignore error, just don't show masked email
-      }
       
       toast.success(response.data.message || 'OTP has been sent to your registered email!');
       setStep(2);
@@ -124,9 +104,6 @@ const ForgotPasswordPage = () => {
       <div style={styles.infoBox}>
         <p style={styles.infoText}>
           OTP has been sent to your registered email
-          {maskedEmail && (
-            <><br /><strong>{maskedEmail}</strong></>
-          )}
         </p>
       </div>
       <div style={styles.inputGroup}>

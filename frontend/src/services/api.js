@@ -10,8 +10,16 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Don't add token for auth endpoints (login, forgot-password, etc.)
+    const isAuthEndpoint = config.url && (
+      config.url.includes('/auth/login') ||
+      config.url.includes('/auth/forgot-password') ||
+      config.url.includes('/auth/verify-otp') ||
+      config.url.includes('/auth/reset-password') ||
+      config.url.includes('/auth/setup')
+    );
+    if (token && !isAuthEndpoint) {
+      config.headers.Authorization = Bearer ${token};
     }
     return config;
   },
