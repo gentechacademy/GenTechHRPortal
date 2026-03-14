@@ -376,27 +376,51 @@ public class SalarySlipService {
     }
 
     /**
-     * Send salary slip via email (stub - logs to console if email not configured)
+     * Send salary slip via email
      */
     public void sendSalarySlipEmail(Long id) {
-        SalarySlip slip = salarySlipRepository.findById(id)
+        // Use findByIdWithEmployee to eagerly load employee and avoid lazy loading issues
+        SalarySlip slip = salarySlipRepository.findByIdWithEmployee(id)
                 .orElseThrow(() -> new RuntimeException("Salary slip not found with ID: " + id));
         
         // Get employee email
-        String employeeEmail = slip.getEmployee().getEmail();
+        User employee = slip.getEmployee();
+        if (employee == null) {
+            throw new RuntimeException("Employee not associated with salary slip");
+        }
+        
+        String employeeEmail = employee.getEmail();
         if (employeeEmail == null || employeeEmail.isEmpty()) {
             throw new RuntimeException("Employee does not have an email address configured");
         }
         
-        // Generate PDF
+        // Generate or get PDF bytes
         byte[] pdfBytes;
+        String pdfPath = slip.getPdfUrl();
+        boolean pdfExists = false;
+        
+        // Check if PDF file exists at the stored path
+        if (pdfPath != null && !pdfPath.isEmpty()) {
+            try {
+                java.nio.file.Path path = java.nio.file.Paths.get(pdfPath);
+                pdfExists = java.nio.file.Files.exists(path);
+            } catch (Exception e) {
+                pdfExists = false;
+            }
+        }
+        
         try {
-            if (slip.getPdfUrl() != null && !slip.getPdfUrl().isEmpty()) {
-                pdfBytes = pdfGenerationService.getPdfBytesByPath(slip.getPdfUrl());
-            } else {
-                // Generate PDF on-the-fly if not exists
-                String pdfPath = pdfGenerationService.generateSalarySlipPdf(slip);
+            if (pdfExists) {
+                // Use existing PDF
                 pdfBytes = pdfGenerationService.getPdfBytesByPath(pdfPath);
+            } else {
+                // Generate PDF on-the-fly if not exists or file is missing
+                System.out.println("PDF not found at path: " + pdfPath + ", generating new PDF...");
+                pdfPath = pdfGenerationService.generateSalarySlipPdf(slip);
+                pdfBytes = pdfGenerationService.getPdfBytesByPath(pdfPath);
+                // Update slip with new PDF path
+                slip.setPdfUrl(pdfPath);
+                slip = salarySlipRepository.save(slip);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate PDF for salary slip: " + e.getMessage());

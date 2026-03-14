@@ -2,6 +2,8 @@ package com.gentech.hrportal.repository;
 
 import com.gentech.hrportal.entity.SalarySlip;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,4 +28,12 @@ public interface SalarySlipRepository extends JpaRepository<SalarySlip, Long> {
      * @return list of salary slips
      */
     List<SalarySlip> findByGeneratedById(Long generatedById);
+    
+    /**
+     * Find salary slip by ID with employee eagerly loaded
+     * @param id the salary slip ID
+     * @return optional salary slip with employee loaded
+     */
+    @Query("SELECT ss FROM SalarySlip ss JOIN FETCH ss.employee WHERE ss.id = :id")
+    Optional<SalarySlip> findByIdWithEmployee(@Param("id") Long id);
 }
