@@ -1,9 +1,24 @@
+# Backend
 backend/target/
+backend/uploads/
+backend/*.log
+backend/*.err.log
 
+# Frontend
 frontend/node_modules/
-build/
-dist/
+frontend/build/
+frontend/dist/
 
+# IDE
 .vscode/
 .idea/
 *.iml
+
+# Tokens and sensitive files
+admin_token.txt
+dev_token.txt
+emp_id.txt
+
+# Misc
+*.patch
+*.md.bak
