@@ -19,7 +19,7 @@ api.interceptors.request.use(
       config.url.includes('/auth/setup')
     );
     if (token && !isAuthEndpoint) {
-      config.headers.Authorization = Bearer ${token};
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
