@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test File Download</title>
+</head>
+<body>
+    <h2>Test File Download with Token</h2>
+    <p>Token: <span id="token"></span></p>
+    <p>Download URL: <a id="downloadLink" href="#" target="_blank">Click to download</a></p>
+    <button onclick="testDownload()">Test Download</button>
+    <div id="result"></div>
+
+    <script>
+        // Get token from localStorage (if this page is served from same origin as your React app)
+        const token = localStorage.getItem('token') || 'PASTE_TOKEN_HERE';
+        document.getElementById('token').textContent = token ? token.substring(0, 30) + '...' : 'Not found';
+        
+        const fileUrl = '/uploads/hr-policies/integrity_001.pdf';
+        const downloadUrl = `http://localhost:8081/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
+        document.getElementById('downloadLink').href = downloadUrl;
+        
+        function testDownload() {
+            fetch(downloadUrl)
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('result').innerHTML = '<p style="color: green;">SUCCESS! Status: ' + response.status + '</p>';
+                        return response.blob();
+                    } else {
+                        document.getElementById('result').innerHTML = '<p style="color: red;">FAILED! Status: ' + response.status + '</p>';
+                    }
+                })
+                .then(blob => {
+                    if (blob) {
+                        // Create download link
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'test.pdf';
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('result').innerHTML = '<p style="color: red;">ERROR: ' + error.message + '</p>';
+                });
+        }
+    </script>
+</body>
+</html>

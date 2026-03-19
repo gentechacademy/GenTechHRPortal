@@ -1,0 +1,59 @@
+============================================
+   HR PORTAL - HOW TO START/STOP
+============================================
+
+OPTION 1: MANUAL (Most Reliable)
+----------------------------------
+1. Open Command Prompt (Window 1):
+   cd C:\GitHubDeskTop\GenTech_HR\GenTechHRPortal\backend
+   java -jar target\hr-portal-1.0.0.jar --spring.profiles.active=dev
+   
+   Wait for: "Started HrPortalApplication in X.XXX seconds"
+
+2. Open Command Prompt (Window 2):
+   cd C:\GitHubDeskTop\GenTech_HR\GenTechHRPortal\frontend
+   npm start
+   
+   Wait for: "Compiled successfully!"
+
+3. Open browser: http://localhost:3000
+
+OPTION 2: Using launch.bat (Semi-Automatic)
+--------------------------------------------
+1. Double-click: launch.bat
+2. Press Enter when backend window shows "Started..."
+3. Press Enter when frontend window shows "Compiled..."
+4. Browser opens automatically
+
+OPTION 3: Using Individual Commands
+------------------------------------
+STOP everything:
+   stop-all.bat
+
+START everything (with auto-wait):
+   start-all.bat
+
+RESTART:
+   restart-all.bat
+
+CHECK STATUS:
+   status.bat
+
+LOGIN CREDENTIALS
+-----------------
+Admin:     admin / admin123
+Developer: developer1 / developer123
+
+TROUBLESHOOTING
+----------------
+If you get "Proxy error: ECONNREFUSED":
+  → Backend is not running. Start it first.
+
+If port 8081 is already in use:
+  → Run: stop-all.bat
+  → Or manually kill Java processes in Task Manager
+
+If you see "JAR file not found":
+  → Build with: cd backend && mvn clean package -DskipTests
+
+============================================

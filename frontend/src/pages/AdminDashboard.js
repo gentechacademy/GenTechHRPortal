@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { adminAPI, uploadAPI, attendanceAPI, leaveAPI, profileEditAPI, salaryAPI, bonusAPI } from '../services/api';
+import { adminAPI, uploadAPI, attendanceAPI, leaveAPI, profileEditAPI, salaryAPI, bonusAPI, adminExitAPI, adminDocumentAPI, resignationAPI, bgvAPI, hrPolicyAPI } from '../services/api';
+import EmployeeSearch from '../components/EmployeeSearch';
 import { toast } from 'react-toastify';
+import ExitEmployeesPage from './ExitEmployeesPage';
+import DocumentManagementPage from './DocumentManagementPage';
 
 const AdminDashboard = () => {
   return (
@@ -19,6 +22,11 @@ const AdminDashboard = () => {
             <Route path="/profile-edits" element={<ProfileEditApproval />} />
             <Route path="/salary" element={<SalaryManagement />} />
             <Route path="/bonus" element={<BonusManagement />} />
+            <Route path="/exit-employees" element={<ExitEmployeesPage />} />
+            <Route path="/documents" element={<DocumentManagementPage />} />
+            <Route path="/resignations" element={<ResignationManagementPage />} />
+            <Route path="/bgv" element={<BGVManagementPage />} />
+            <Route path="/hr-policies" element={<HRPoliciesPage />} />
           </Routes>
         </div>
       </div>
@@ -32,11 +40,16 @@ const Sidebar = () => {
   const menuItems = [
     { path: '/admin', label: 'Dashboard', icon: '📊' },
     { path: '/admin/employees', label: 'Manage Employees', icon: '👥' },
+    { path: '/admin/exit-employees', label: 'Exit Employees', icon: '🚪' },
+    { path: '/admin/documents', label: 'Document Management', icon: '📄' },
     { path: '/admin/attendance', label: 'Attendance Approval', icon: '✅' },
     { path: '/admin/leaves', label: 'Leave Approvals', icon: '🏖️' },
     { path: '/admin/profile-edits', label: 'Profile Edit Requests', icon: '✏️' },
     { path: '/admin/salary', label: 'Salary Management', icon: '💰' },
     { path: '/admin/bonus', label: 'Bonus Management', icon: '🎁' },
+    { path: '/admin/resignations', label: 'Resignation Approvals', icon: '📝' },
+    { path: '/admin/bgv', label: 'BGV Management', icon: '🔍' },
+    { path: '/admin/hr-policies', label: 'HR Policies', icon: '📋' },
   ];
 
   return (
@@ -2557,7 +2570,7 @@ const ManageEmployees = () => {
                 <div style={styles.previewContainer}>
                   {(() => {
                     const displayUrl = previewUrl || (formData.profilePictureUrl
-                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `https://gentechhrportal.onrender.com/${formData.profilePictureUrl}`)
+                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `http://localhost:8081${formData.profilePictureUrl}`)
                       : null);
                     return displayUrl ? (
                       <img
@@ -2624,7 +2637,7 @@ const ManageEmployees = () => {
           <tbody>
             {employees.map((emp) => {
               const fullImageUrl = emp.profilePictureUrl
-                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `https://gentechhrportal.onrender.com${emp.profilePictureUrl}`)
+                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `http://localhost:8081${emp.profilePictureUrl}`)
                 : null;
               return (
                 <tr key={emp.id} style={styles.tr}>
@@ -3751,6 +3764,879 @@ const styles = {
     fontWeight: 'bold',
     marginTop: '20px',
   },
+  // Resignation Management Styles
+  emptyState: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    marginBottom: '16px',
+  },
+  employeeInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  email: {
+    fontSize: '12px',
+    color: '#666',
+  },
+  reasonCell: {
+    maxWidth: '200px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  noAction: {
+    color: '#999',
+  },
+  formGroup: {
+    marginBottom: '16px',
+  },
+  textarea: {
+    width: '100%',
+    padding: '8px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    resize: 'vertical',
+  },
+  cancelBtn: {
+    backgroundColor: '#95a5a6',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  confirmApproveBtn: {
+    backgroundColor: '#27ae60',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  confirmRejectBtn: {
+    backgroundColor: '#e74c3c',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+};
+
+// BGV Management Component
+const BGVManagementPage = () => {
+  const [bgvRequests, setBgvRequests] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showInitiateModal, setShowInitiateModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [selectedBGV, setSelectedBGV] = useState(null);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
+  const [initiateForm, setInitiateForm] = useState({
+    employeeId: '',
+    employeeType: 'FRESHER',
+    remarks: ''
+  });
+
+  useEffect(() => {
+    loadBGVRequests();
+    loadEmployees();
+  }, []);
+
+  const loadBGVRequests = async () => {
+    try {
+      setLoading(true);
+      const response = await bgvAPI.getCompanyBGVRequests();
+      setBgvRequests(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load BGV requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const response = await adminAPI.getAllEmployees();
+      setEmployees(response.data || []);
+    } catch (error) {
+      console.error('Failed to load employees');
+    }
+  };
+
+  const handleInitiateBGV = async () => {
+    try {
+      await bgvAPI.initiateBGV(initiateForm);
+      toast.success('BGV initiated successfully');
+      setShowInitiateModal(false);
+      setInitiateForm({ employeeId: '', employeeType: 'FRESHER', remarks: '' });
+      loadBGVRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to initiate BGV');
+    }
+  };
+
+  const handleViewDocuments = async (bgv) => {
+    try {
+      const response = await bgvAPI.getBGVDocuments(bgv.id);
+      setSelectedDocuments(response.data || []);
+      setSelectedBGV(bgv);
+      setShowVerifyModal(true);
+    } catch (error) {
+      toast.error('Failed to load documents');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const colors = {
+      'PENDING': '#f39c12',
+      'IN_PROGRESS': '#3498db',
+      'SUBMITTED': '#9b59b6',
+      'UNDER_REVIEW': '#e67e22',
+      'APPROVED': '#27ae60',
+      'REJECTED': '#e74c3c',
+      'PARTIAL_APPROVED': '#f1c40f'
+    };
+    return {
+      backgroundColor: colors[status] || '#95a5a6',
+      color: 'white',
+      padding: '4px 12px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '600',
+    };
+  };
+
+  if (loading) {
+    return <div style={styles.loading}>Loading BGV requests...</div>;
+  }
+
+  return (
+    <div>
+      <h2 style={styles.pageTitle}>BGV Management</h2>
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          style={styles.generateBtn}
+          onClick={() => setShowInitiateModal(true)}
+        >
+          + Initiate BGV
+        </button>
+      </div>
+      
+      {bgvRequests.length === 0 ? (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>🔍</div>
+          <h3>No BGV Requests</h3>
+          <p>No background verification requests found.</p>
+          <p style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+            Click "Initiate BGV" to start a new verification process.
+          </p>
+        </div>
+      ) : (
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Employee</th>
+                <th style={styles.th}>Type</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Initiated</th>
+                <th style={styles.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bgvRequests.map((bgv) => (
+                <tr key={bgv.id} style={styles.tr}>
+                  <td style={styles.td}>
+                    <div style={styles.employeeInfo}>
+                      <strong>{bgv.employee?.fullName}</strong>
+                      <span style={styles.email}>{bgv.employee?.email}</span>
+                    </div>
+                  </td>
+                  <td style={styles.td}>{bgv.employeeType}</td>
+                  <td style={styles.td}>
+                    <span style={getStatusBadge(bgv.status)}>
+                      {bgv.status}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    {new Date(bgv.initiatedAt).toLocaleDateString()}
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      style={styles.approveBtn}
+                      onClick={() => handleViewDocuments(bgv)}
+                    >
+                      View Docs
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Initiate BGV Modal */}
+      {showInitiateModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Initiate BGV</h3>
+            <div style={styles.formGroup}>
+              <label>Select Employee *</label>
+              <select
+                value={initiateForm.employeeId}
+                onChange={(e) => setInitiateForm({...initiateForm, employeeId: e.target.value})}
+                style={styles.input}
+              >
+                <option value="">Select Employee</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.email})</option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.formGroup}>
+              <label>Employee Type *</label>
+              <select
+                value={initiateForm.employeeType}
+                onChange={(e) => setInitiateForm({...initiateForm, employeeType: e.target.value})}
+                style={styles.input}
+              >
+                <option value="FRESHER">Fresher</option>
+                <option value="EXPERIENCED">Experienced</option>
+              </select>
+            </div>
+            <div style={styles.formGroup}>
+              <label>Remarks</label>
+              <textarea
+                value={initiateForm.remarks}
+                onChange={(e) => setInitiateForm({...initiateForm, remarks: e.target.value})}
+                style={styles.textarea}
+                rows="2"
+              />
+            </div>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowInitiateModal(false)}>
+                Cancel
+              </button>
+              <button 
+                style={styles.confirmApproveBtn} 
+                onClick={handleInitiateBGV}
+                disabled={!initiateForm.employeeId}
+              >
+                Initiate BGV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Documents Modal */}
+      {showVerifyModal && (
+        <div style={styles.modalOverlay}>
+          <div style={{...styles.modal, maxWidth: '700px'}}>
+            <h3>BGV Documents - {selectedBGV?.employee?.fullName}</h3>
+            <table style={{...styles.table, marginTop: '20px'}}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Document</th>
+                  <th style={styles.th}>Status</th>
+                  <th style={styles.th}>File</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedDocuments.map((doc) => (
+                  <tr key={doc.id} style={styles.tr}>
+                    <td style={styles.td}>{doc.documentName}</td>
+                    <td style={styles.td}>
+                      <span style={getStatusBadge(doc.status)}>
+                        {doc.status}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      {doc.fileUrl ? (
+                        <a href={`http://localhost:8081${doc.fileUrl}`} target="_blank" rel="noopener noreferrer">
+                          View
+                        </a>
+                      ) : (
+                        'Not uploaded'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowVerifyModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// HR Policies Component
+const HRPoliciesPage = () => {
+  const [policies, setPolicies] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState(null);
+  const [policyForm, setPolicyForm] = useState({
+    title: '',
+    description: '',
+    type: 'POLICY',
+    category: 'GENERAL',
+    file: null
+  });
+  const [assignForm, setAssignForm] = useState({
+    employeeId: ''
+  });
+
+  useEffect(() => {
+    loadPolicies();
+    loadEmployees();
+  }, []);
+
+  const loadPolicies = async () => {
+    try {
+      setLoading(true);
+      const response = await hrPolicyAPI.getAllPolicies();
+      setPolicies(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load policies');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const response = await adminAPI.getAllEmployees();
+      setEmployees(response.data || []);
+    } catch (error) {
+      console.error('Failed to load employees');
+    }
+  };
+
+  const handleUploadPolicy = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('title', policyForm.title);
+      formData.append('description', policyForm.description);
+      formData.append('type', policyForm.type);
+      formData.append('category', policyForm.category);
+      if (policyForm.file) {
+        formData.append('file', policyForm.file);
+      }
+      
+      await hrPolicyAPI.createPolicy(formData);
+      toast.success('Policy uploaded successfully');
+      setShowUploadModal(false);
+      setPolicyForm({ title: '', description: '', type: 'POLICY', category: 'GENERAL', file: null });
+      loadPolicies();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to upload policy');
+    }
+  };
+
+  const handleAssignPolicy = async () => {
+    try {
+      await hrPolicyAPI.assignPolicyToEmployee({
+        policyId: selectedPolicy.id,
+        employeeId: assignForm.employeeId
+      });
+      toast.success('Policy assigned successfully');
+      setShowAssignModal(false);
+      setAssignForm({ employeeId: '' });
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to assign policy');
+    }
+  };
+
+  const openAssignModal = (policy) => {
+    setSelectedPolicy(policy);
+    setShowAssignModal(true);
+  };
+
+  const getTypeBadge = (type) => {
+    return {
+      backgroundColor: type === 'POLICY' ? '#3498db' : '#9b59b6',
+      color: 'white',
+      padding: '4px 12px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '600',
+    };
+  };
+
+  const getStatusBadge = (active) => {
+    return {
+      backgroundColor: active ? '#27ae60' : '#e74c3c',
+      color: 'white',
+      padding: '4px 12px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '600',
+    };
+  };
+
+  if (loading) {
+    return <div style={styles.loading}>Loading HR Policies...</div>;
+  }
+
+  return (
+    <div>
+      <h2 style={styles.pageTitle}>HR Policies & Forms</h2>
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          style={styles.generateBtn}
+          onClick={() => setShowUploadModal(true)}
+        >
+          + Upload Policy/Form
+        </button>
+      </div>
+      
+      {policies.length === 0 ? (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>📋</div>
+          <h3>No Policies</h3>
+          <p>No HR policies or forms uploaded yet.</p>
+        </div>
+      ) : (
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Title</th>
+                <th style={styles.th}>Type</th>
+                <th style={styles.th}>Category</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Uploaded</th>
+                <th style={styles.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policies.map((policy) => (
+                <tr key={policy.id} style={styles.tr}>
+                  <td style={styles.td}>
+                    <strong>{policy.policyName || policy.title}</strong>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={getTypeBadge(policy.policyType || policy.type)}>
+                      {policy.policyType || policy.type}
+                    </span>
+                  </td>
+                  <td style={styles.td}>{policy.category}</td>
+                  <td style={styles.td}>
+                    <span style={getStatusBadge(policy.active)}>
+                      {policy.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    {new Date(policy.createdAt).toLocaleDateString()}
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      style={{...styles.approveBtn, marginRight: '8px'}}
+                      onClick={() => openAssignModal(policy)}
+                    >
+                      Assign
+                    </button>
+                    {policy.fileUrl && (
+                      <button
+                        onClick={() => {
+                          const token = localStorage.getItem('token');
+                          const downloadUrl = `http://localhost:8081/api/files/download?path=${encodeURIComponent(policy.fileUrl)}&token=${token}`;
+                          window.open(downloadUrl, '_blank');
+                        }}
+                        style={styles.viewBtn}
+                      >
+                        View
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Upload Policy/Form</h3>
+            <div style={styles.formGroup}>
+              <label>Title *</label>
+              <input
+                type="text"
+                value={policyForm.title}
+                onChange={(e) => setPolicyForm({...policyForm, title: e.target.value})}
+                style={styles.input}
+                placeholder="e.g., POSH Policy"
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label>Description</label>
+              <textarea
+                value={policyForm.description}
+                onChange={(e) => setPolicyForm({...policyForm, description: e.target.value})}
+                style={styles.textarea}
+                rows="2"
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label>Type *</label>
+              <select
+                value={policyForm.type}
+                onChange={(e) => setPolicyForm({...policyForm, type: e.target.value})}
+                style={styles.input}
+              >
+                <option value="POLICY">Policy</option>
+                <option value="FORM">Form</option>
+              </select>
+            </div>
+            <div style={styles.formGroup}>
+              <label>Category *</label>
+              <select
+                value={policyForm.category}
+                onChange={(e) => setPolicyForm({...policyForm, category: e.target.value})}
+                style={styles.input}
+              >
+                <option value="POSH">POSH</option>
+                <option value="INTEGRITY">Integrity</option>
+                <option value="CONFIDENTIALITY">Confidentiality</option>
+                <option value="PF">PF Declaration</option>
+                <option value="GRATUITY">Gratuity</option>
+                <option value="ESI">ESI</option>
+                <option value="GENERAL">General</option>
+              </select>
+            </div>
+            <div style={styles.formGroup}>
+              <label>Document File (PDF)</label>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => setPolicyForm({...policyForm, file: e.target.files[0]})}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowUploadModal(false)}>
+                Cancel
+              </button>
+              <button 
+                style={styles.confirmApproveBtn} 
+                onClick={handleUploadPolicy}
+                disabled={!policyForm.title}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Assign {selectedPolicy?.title}</h3>
+            <div style={styles.formGroup}>
+              <label>Select Employee *</label>
+              <select
+                value={assignForm.employeeId}
+                onChange={(e) => setAssignForm({...assignForm, employeeId: e.target.value})}
+                style={styles.input}
+              >
+                <option value="">Select Employee</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.email})</option>
+                ))}
+              </select>
+            </div>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowAssignModal(false)}>
+                Cancel
+              </button>
+              <button 
+                style={styles.confirmApproveBtn} 
+                onClick={handleAssignPolicy}
+                disabled={!assignForm.employeeId}
+              >
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Resignation Management Component
+const ResignationManagementPage = () => {
+  const [resignations, setResignations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [myCompany, setMyCompany] = useState(null);
+  const [selectedResignation, setSelectedResignation] = useState(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [remarks, setRemarks] = useState('');
+
+  useEffect(() => {
+    loadMyCompany();
+  }, []);
+
+  useEffect(() => {
+    if (myCompany) {
+      loadResignations();
+    }
+  }, [myCompany]);
+
+  const loadMyCompany = async () => {
+    try {
+      const response = await adminAPI.getMyCompany();
+      setMyCompany(response.data);
+    } catch (error) {
+      toast.error('Failed to load company info');
+    }
+  };
+
+  const loadResignations = async () => {
+    try {
+      setLoading(true);
+      const response = await resignationAPI.getPendingForAdmin(myCompany.id);
+      setResignations(response.data || []);
+    } catch (error) {
+      toast.error('Failed to load resignation requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await resignationAPI.adminApprove({
+        resignationId: selectedResignation.id,
+        approved: true,
+        remarks: remarks
+      });
+      toast.success('Resignation approved successfully');
+      setShowApproveModal(false);
+      setRemarks('');
+      loadResignations();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve resignation');
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await resignationAPI.adminApprove({
+        resignationId: selectedResignation.id,
+        approved: false,
+        remarks: remarks
+      });
+      toast.success('Resignation rejected');
+      setShowRejectModal(false);
+      setRemarks('');
+      loadResignations();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject resignation');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const colors = {
+      'PENDING': '#f39c12',
+      'PENDING_MANAGER': '#f39c12',
+      'MANAGER_APPROVED': '#3498db',
+      'PENDING_ADMIN': '#3498db',
+      'ADMIN_APPROVED': '#27ae60',
+      'APPROVED': '#27ae60',
+      'REJECTED': '#e74c3c',
+      'CANCELLED': '#95a5a6'
+    };
+    const labels = {
+      'PENDING_MANAGER': 'Pending Manager',
+      'MANAGER_APPROVED': 'Manager Approved',
+      'PENDING_ADMIN': 'Pending Admin',
+      'APPROVED': 'Approved',
+      'REJECTED': 'Rejected',
+      'CANCELLED': 'Cancelled'
+    };
+    return {
+      backgroundColor: colors[status] || '#95a5a6',
+      color: 'white',
+      padding: '4px 12px',
+      borderRadius: '12px',
+      fontSize: '12px',
+      fontWeight: '600',
+      textTransform: 'capitalize'
+    };
+  };
+
+  if (loading) {
+    return <div style={styles.loading}>Loading resignation requests...</div>;
+  }
+
+  return (
+    <div>
+      <h2 style={styles.pageTitle}>Resignation Approvals</h2>
+      
+      {resignations.length === 0 ? (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>📝</div>
+          <h3>No Pending Resignations</h3>
+          <p>There are no resignation requests awaiting your approval.</p>
+        </div>
+      ) : (
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Employee</th>
+                <th style={styles.th}>Request Date</th>
+                <th style={styles.th}>Proposed LWD</th>
+                <th style={styles.th}>Notice Period</th>
+                <th style={styles.th}>Reason</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resignations.map((resignation) => (
+                <tr key={resignation.id} style={styles.tr}>
+                  <td style={styles.td}>
+                    <div style={styles.employeeInfo}>
+                      <strong>{resignation.employee?.fullName}</strong>
+                      <span style={styles.email}>{resignation.employee?.email}</span>
+                    </div>
+                  </td>
+                  <td style={styles.td}>{new Date(resignation.requestDate).toLocaleDateString()}</td>
+                  <td style={styles.td}>{new Date(resignation.proposedLastWorkingDay).toLocaleDateString()}</td>
+                  <td style={styles.td}>{resignation.noticePeriodDays} days</td>
+                  <td style={styles.td}>
+                    <div style={styles.reasonCell} title={resignation.reason}>
+                      {resignation.reason?.substring(0, 50)}...
+                    </div>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={getStatusBadge(resignation.status)}>
+                      {resignation.status === 'PENDING_MANAGER' ? 'Pending Manager' : 
+                       resignation.status === 'MANAGER_APPROVED' ? 'Manager Approved' :
+                       resignation.status === 'APPROVED' ? 'Approved' :
+                       resignation.status?.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    {resignation.status === 'PENDING_MANAGER' || resignation.status === 'MANAGER_APPROVED' ? (
+                      <div style={styles.actionButtons}>
+                        <button
+                          style={styles.approveBtn}
+                          onClick={() => {
+                            setSelectedResignation(resignation);
+                            setShowApproveModal(true);
+                          }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          style={styles.rejectBtn}
+                          onClick={() => {
+                            setSelectedResignation(resignation);
+                            setShowRejectModal(true);
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={styles.noAction}>-</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Approve Modal */}
+      {showApproveModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Approve Resignation</h3>
+            <p>Employee: <strong>{selectedResignation?.employee?.fullName}</strong></p>
+            <div style={styles.formGroup}>
+              <label>Remarks (Optional)</label>
+              <textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Add any remarks..."
+                style={styles.textarea}
+                rows="3"
+              />
+            </div>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowApproveModal(false)}>
+                Cancel
+              </button>
+              <button style={styles.confirmApproveBtn} onClick={handleApprove}>
+                Confirm Approval
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Reject Resignation</h3>
+            <p>Employee: <strong>{selectedResignation?.employee?.fullName}</strong></p>
+            <div style={styles.formGroup}>
+              <label>Reason for Rejection *</label>
+              <textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Provide reason for rejection..."
+                style={styles.textarea}
+                rows="3"
+                required
+              />
+            </div>
+            <div style={styles.modalButtons}>
+              <button style={styles.cancelBtn} onClick={() => setShowRejectModal(false)}>
+                Cancel
+              </button>
+              <button 
+                style={styles.confirmRejectBtn} 
+                onClick={handleReject}
+                disabled={!remarks.trim()}
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AdminDashboard;

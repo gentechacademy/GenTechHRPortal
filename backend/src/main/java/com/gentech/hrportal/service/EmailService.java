@@ -1,8 +1,10 @@
 package com.gentech.hrportal.service;
 
+import com.gentech.hrportal.entity.EmployeeExit;
 import com.gentech.hrportal.entity.EmployeeProfile;
 import com.gentech.hrportal.entity.Leave;
 import com.gentech.hrportal.entity.Project;
+import com.gentech.hrportal.entity.ResignationRequest;
 import com.gentech.hrportal.entity.SalarySlip;
 import com.gentech.hrportal.entity.User;
 import jakarta.mail.MessagingException;
@@ -372,6 +374,148 @@ public class EmailService {
         sb.append("Portal URL: ").append(frontendUrl).append("\n\n");
         
         sb.append("Best regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    // ==================== Resignation Notification Methods ====================
+
+    /**
+     * Send notification when a new resignation request is submitted
+     */
+    public void sendResignationNotification(ResignationRequest request, User employee) {
+        String subject = "New Resignation Request - " + employee.getFullName();
+        String body = buildResignationNotificationBody(request, employee);
+        // Notify manager and admin
+        sendEmail(employee.getEmail(), subject, body);
+    }
+
+    /**
+     * Send notification when a new exit request is submitted (overloaded for EmployeeExit)
+     */
+    public void sendResignationNotification(EmployeeExit exit, User manager) {
+        String subject = "New Exit Request - " + exit.getEmployee().getFullName();
+        String body = buildExitNotificationBody(exit);
+        sendEmail(manager.getEmail(), subject, body);
+    }
+
+    /**
+     * Send notification when manager approves resignation
+     */
+    public void sendResignationManagerApprovalNotification(ResignationRequest request, User employee) {
+        String subject = "Resignation Approved by Manager - " + employee.getFullName();
+        String body = buildResignationManagerApprovalBody(request, employee);
+        sendEmail(employee.getEmail(), subject, body);
+    }
+
+    /**
+     * Send notification when manager approves exit (overloaded for EmployeeExit)
+     */
+    public void sendResignationManagerApprovalNotification(EmployeeExit exit, User admin) {
+        String subject = "Exit Approved by Manager - " + exit.getEmployee().getFullName();
+        String body = buildExitManagerApprovalBody(exit);
+        sendEmail(admin.getEmail(), subject, body);
+    }
+
+    /**
+     * Send status update notification for resignation
+     */
+    public void sendResignationStatusUpdateNotification(ResignationRequest request) {
+        String subject = "Resignation Request Update - " + request.getEmployee().getFullName();
+        String body = buildResignationStatusUpdateBody(request);
+        sendEmail(request.getEmployee().getEmail(), subject, body);
+    }
+
+    private String buildResignationNotificationBody(ResignationRequest request, User employee) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(employee.getFullName()).append(",\n\n");
+        sb.append("Your resignation request has been submitted successfully.\n\n");
+        sb.append("Resignation Details:\n");
+        sb.append("- Reason: ").append(request.getReason()).append("\n");
+        sb.append("- Notice Period: ").append(request.getNoticePeriodDays()).append(" days\n");
+        sb.append("- Proposed Last Working Day: ").append(request.getProposedLastWorkingDay()).append("\n\n");
+        sb.append("Your request is pending approval from your manager and admin.\n\n");
+        sb.append("Best regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    private String buildResignationManagerApprovalBody(ResignationRequest request, User employee) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(employee.getFullName()).append(",\n\n");
+        sb.append("Your resignation request has been approved by your manager.\n\n");
+        sb.append("It is now pending final approval from the admin.\n\n");
+        sb.append("Best regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    private String buildExitNotificationBody(EmployeeExit exit) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear Manager,\n\n");
+        sb.append("A new exit request has been submitted by ").append(exit.getEmployee().getFullName()).append(".\n\n");
+        sb.append("Exit Details:\n");
+        sb.append("- Reason: ").append(exit.getReason()).append("\n");
+        sb.append("- Notice Period: ").append(exit.getNoticePeriodDays()).append(" days\n");
+        sb.append("- Proposed Last Working Day: ").append(exit.getLastWorkingDate()).append("\n\n");
+        sb.append("Please review and take appropriate action.\n\n");
+        sb.append("Best regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    private String buildExitManagerApprovalBody(EmployeeExit exit) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear Admin,\n\n");
+        sb.append("An exit request has been approved by the manager.\n\n");
+        sb.append("Employee: ").append(exit.getEmployee().getFullName()).append("\n");
+        sb.append("It is now pending your final approval.\n\n");
+        sb.append("Best regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    private String buildResignationStatusUpdateBody(ResignationRequest request) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(request.getEmployee().getFullName()).append(",\n\n");
+        sb.append("There has been an update to your resignation request.\n\n");
+        sb.append("Current Status: ").append(request.getStatus()).append("\n");
+        if (request.getActualLastWorkingDay() != null) {
+            sb.append("Last Working Date: ").append(request.getActualLastWorkingDay()).append("\n");
+        }
+        sb.append("\nBest regards,\n");
+        sb.append("HR Portal Team\n");
+        sb.append(companyName);
+        return sb.toString();
+    }
+
+    // ==================== Employee Exit Notification Methods ====================
+
+    /**
+     * Send notification for employee exit status update
+     */
+    public void sendResignationStatusUpdateNotification(EmployeeExit exit) {
+        String subject = "Employee Exit Status Update - " + exit.getEmployee().getFullName();
+        String body = buildEmployeeExitStatusBody(exit);
+        sendEmail(exit.getEmployee().getEmail(), subject, body);
+    }
+
+    private String buildEmployeeExitStatusBody(EmployeeExit exit) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dear ").append(exit.getEmployee().getFullName()).append(",\n\n");
+        sb.append("There has been an update to your exit request.\n\n");
+        sb.append("Exit Status: ").append(exit.getExitStatus()).append("\n");
+        sb.append("Manager Approval: ").append(exit.getManagerApprovalStatus()).append("\n");
+        sb.append("Admin Approval: ").append(exit.getAdminApprovalStatus()).append("\n");
+        if (exit.getLastWorkingDate() != null) {
+            sb.append("Last Working Date: ").append(exit.getLastWorkingDate()).append("\n");
+        }
+        sb.append("\nBest regards,\n");
         sb.append("HR Portal Team\n");
         sb.append(companyName);
         return sb.toString();

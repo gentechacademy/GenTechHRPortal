@@ -69,6 +69,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/auth/verify-otp").permitAll()
                                 .requestMatchers("/api/auth/reset-password").permitAll()
                                 .requestMatchers("/uploads/**").permitAll()
+                                .requestMatchers("/api/files/download").permitAll()
                                 .requestMatchers("/api/superadmin/**").hasRole("SUPER_ADMIN")
                                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                                 .requestMatchers("/api/employee/**").hasAnyRole("HR", "HR_MANAGER", "SOFTWARE_ENGINEER",

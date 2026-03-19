@@ -29,9 +29,23 @@ public class FileUploadController {
     }
 
     @PostMapping("/company-logo")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> uploadCompanyLogo(@RequestParam("file") MultipartFile file) {
         try {
             String fileUrl = fileStorageService.storeFile(file, "company-logos");
+            return ResponseEntity.ok(new UploadResponse(fileUrl));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Could not upload file: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/document")
+    @PreAuthorize("hasAnyRole('DEVELOPER', 'SOFTWARE_ENGINEER', 'HR', 'MANAGER', 'GENERAL_MANAGER', 'ADMIN')")
+    public ResponseEntity<?> uploadDocument(@RequestParam("file") MultipartFile file, 
+                                            @RequestParam("employeeId") Long employeeId) {
+        try {
+            String subDirectory = "documents/employee_" + employeeId;
+            String fileUrl = fileStorageService.storeFile(file, subDirectory);
             return ResponseEntity.ok(new UploadResponse(fileUrl));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Could not upload file: " + e.getMessage()));

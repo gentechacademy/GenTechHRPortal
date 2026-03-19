@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import EmployeeDetailsPage from './pages/EmployeeDetailsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -34,6 +35,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/employee/:id/details" 
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+                <EmployeeDetailsPage />
               </ProtectedRoute>
             } 
           />

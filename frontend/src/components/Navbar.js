@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import EmployeeSearch from './EmployeeSearch';
 
 const Navbar = ({ title }) => {
   const { user, logout, getDashboardPath } = useAuth();
@@ -15,12 +16,15 @@ const Navbar = ({ title }) => {
     navigate(getDashboardPath());
   };
 
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   return (
     <nav style={styles.navbar}>
       <div style={styles.container}>
         <h1 style={styles.title} onClick={goHome}>
           {title || 'HR Portal'}
         </h1>
+        {isAdmin && <EmployeeSearch />}
         <div style={styles.userSection}>
           <span style={styles.userInfo}>
             {user?.fullName} ({user?.role?.replace('_', ' ')})
