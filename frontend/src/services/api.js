@@ -4,7 +4,7 @@ import axios from 'axios';
 // In production, use the full API URL
 const API_URL = process.env.NODE_ENV === 'development' 
   ? '/api' 
-  : 'https://gentechhrportal.onrender.com/api';
+  : 'http://35.244.33.127:9090/api';
 
 const api = axios.create({
   baseURL: API_URL,
