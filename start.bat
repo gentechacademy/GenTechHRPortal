@@ -12,7 +12,7 @@ echo Both services are starting in new windows.
 echo Please wait about 30 seconds for the backend to fully initialize.
 echo.
 echo ----------------------------------------
-echo Backend URL:  http://localhost:8081
+echo Backend URL:  http://localhost:9090
 echo Frontend URL: http://localhost:3000
 echo ----------------------------------------
 echo.
