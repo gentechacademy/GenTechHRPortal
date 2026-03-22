@@ -197,25 +197,6 @@ const MyProfile = () => {
     setPreviewUrl(null);
   };
 
-  const handleViewPolicy = (fileUrl) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Authentication token not found');
-        return;
-      }
-      if (!fileUrl) {
-        toast.error('File URL not available');
-        return;
-      }
-      // Open file in new tab with token in query param
-      const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
-      window.open(downloadUrl, '_blank');
-    } catch (error) {
-      toast.error('Error opening file: ' + error.message);
-    }
-  };
-
   const handleEditClick = (fieldName, currentValue) => {
     const fieldLabels = {
       phoneNumber: 'Phone Number',
@@ -4285,6 +4266,24 @@ const MyBGVPage = () => {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
 
+  const handleViewPolicy = (fileUrl) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication token not found');
+        return;
+      }
+      if (!fileUrl) {
+        toast.error('File URL not available');
+        return;
+      }
+      const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      toast.error('Error opening file: ' + error.message);
+    }
+  };
+
   useEffect(() => {
     loadBGVRequests();
   }, []);
@@ -4630,6 +4629,24 @@ const MyPoliciesPage = () => {
   const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [acknowledged, setAcknowledged] = useState(false);
+
+  const handleViewPolicy = (fileUrl) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Authentication token not found');
+        return;
+      }
+      if (!fileUrl) {
+        toast.error('File URL not available');
+        return;
+      }
+      const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      toast.error('Error opening file: ' + error.message);
+    }
+  };
 
   useEffect(() => {
     loadPolicies();
