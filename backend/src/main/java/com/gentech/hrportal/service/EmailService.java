@@ -288,7 +288,7 @@ public class EmailService {
         StringBuilder sb = new StringBuilder();
         sb.append("Dear ").append(user.getFullName()).append(",\n\n");
         sb.append("Welcome to ").append(companyName).append("!\n\n");
-        sb.append("Your employee account has been successfully created. Below are your login credentials and employment details:\n\n");
+        sb.append("Your account has been successfully created. Below are your login credentials:\n\n");
         
         sb.append("========================================\n");
         sb.append("      LOGIN CREDENTIALS\n");
@@ -298,27 +298,39 @@ public class EmailService {
         sb.append("Password: ").append(plainPassword).append("\n");
         sb.append("Role: ").append(user.getRole()).append("\n\n");
         
-        sb.append("========================================\n");
-        sb.append("      EMPLOYMENT DETAILS\n");
-        sb.append("========================================\n");
-        if (profile.getEmployeeCode() != null && !profile.getEmployeeCode().isEmpty()) {
-            sb.append("Employee ID: ").append(profile.getEmployeeCode()).append("\n");
+        if (profile != null) {
+            sb.append("========================================\n");
+            sb.append("      EMPLOYMENT DETAILS\n");
+            sb.append("========================================\n");
+            if (profile.getEmployeeCode() != null && !profile.getEmployeeCode().isEmpty()) {
+                sb.append("Employee ID: ").append(profile.getEmployeeCode()).append("\n");
+            }
+            sb.append("Full Name: ").append(user.getFullName()).append("\n");
+            sb.append("Email: ").append(user.getEmail()).append("\n");
+            if (profile.getDepartment() != null && !profile.getDepartment().isEmpty()) {
+                sb.append("Department: ").append(profile.getDepartment()).append("\n");
+            }
+            if (profile.getDesignation() != null && !profile.getDesignation().isEmpty()) {
+                sb.append("Designation: ").append(profile.getDesignation()).append("\n");
+            }
+            if (profile.getDateOfJoining() != null) {
+                sb.append("Date of Joining: ").append(profile.getDateOfJoining()).append("\n");
+            }
+            if (user.getCompany() != null) {
+                sb.append("Company: ").append(user.getCompany().getName()).append("\n");
+            }
+            sb.append("\n");
+        } else {
+            sb.append("========================================\n");
+            sb.append("      ACCOUNT DETAILS\n");
+            sb.append("========================================\n");
+            sb.append("Full Name: ").append(user.getFullName()).append("\n");
+            sb.append("Email: ").append(user.getEmail()).append("\n");
+            if (user.getCompany() != null) {
+                sb.append("Company: ").append(user.getCompany().getName()).append("\n");
+            }
+            sb.append("\n");
         }
-        sb.append("Full Name: ").append(user.getFullName()).append("\n");
-        sb.append("Email: ").append(user.getEmail()).append("\n");
-        if (profile.getDepartment() != null && !profile.getDepartment().isEmpty()) {
-            sb.append("Department: ").append(profile.getDepartment()).append("\n");
-        }
-        if (profile.getDesignation() != null && !profile.getDesignation().isEmpty()) {
-            sb.append("Designation: ").append(profile.getDesignation()).append("\n");
-        }
-        if (profile.getDateOfJoining() != null) {
-            sb.append("Date of Joining: ").append(profile.getDateOfJoining()).append("\n");
-        }
-        if (user.getCompany() != null) {
-            sb.append("Company: ").append(user.getCompany().getName()).append("\n");
-        }
-        sb.append("\n");
         
         sb.append("========================================\n");
         sb.append("      IMPORTANT SECURITY NOTICE\n");

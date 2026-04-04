@@ -64,6 +64,17 @@ const DocumentManagementPage = () => {
     }
   };
 
+  const handleViewDocument = (docUrl) => {
+    if (!docUrl) {
+      toast.error('File not available');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+    const downloadUrl = `${baseUrl}/api/files/download?path=${encodeURIComponent(docUrl)}&token=${token}`;
+    window.open(downloadUrl, '_blank');
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       PENDING: { background: '#fff3cd', color: '#856404' },
@@ -96,7 +107,7 @@ const DocumentManagementPage = () => {
   return (
     <div style={styles.container}>
       <h2 style={styles.heading}>Document Management</h2>
-      
+
       {/* Tabs */}
       <div style={styles.tabs}>
         {tabs.map(tab => (
@@ -153,27 +164,20 @@ const DocumentManagementPage = () => {
                     <td style={styles.td}>{getStatusBadge(doc.status)}</td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
-                        <a
-                          href={doc.documentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.viewLink}
-                        >
-                          View
-                        </a>
+                        <button onClick={() => handleViewDocument(doc.documentUrl)} style={styles.viewLink}>👁 View</button>
                         {doc.status === 'PENDING' && (
                           <>
                             <button
                               onClick={() => handleAction(doc, 'approve')}
                               style={styles.approveButton}
                             >
-                              ✓ Approve
+                              Approve
                             </button>
                             <button
                               onClick={() => handleAction(doc, 'reject')}
                               style={styles.rejectButton}
                             >
-                              ✗ Reject
+                              Reject
                             </button>
                           </>
                         )}
@@ -195,7 +199,7 @@ const DocumentManagementPage = () => {
               {actionType === 'approve' ? 'Approve Document' : 'Reject Document'}
             </h3>
             <p style={styles.modalText}>
-              <strong>Document:</strong> {selectedDoc?.documentName}<br/>
+              <strong>Document:</strong> {selectedDoc?.documentName}<br />
               <strong>Employee:</strong> {selectedDoc?.employeeName}
             </p>
             <div style={styles.formGroup}>
@@ -319,6 +323,10 @@ const styles = {
     textDecoration: 'none',
     fontSize: '13px',
     padding: '6px 12px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: '500',
   },
   approveButton: {
     padding: '6px 12px',
@@ -422,3 +430,4 @@ const styles = {
 };
 
 export default DocumentManagementPage;
+

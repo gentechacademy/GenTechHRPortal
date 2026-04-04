@@ -98,3 +98,6 @@
    ? Created BGV for developer2 (Experienced) - Under Verification
    ? Assigned 5 policies to employees
 ? Test data loaded successfully!
+2026-03-20T00:17:06.497+05:30  INFO 24228 --- [HR Portal] [nio-8081-exec-3] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-20T00:17:06.499+05:30  INFO 24228 --- [HR Portal] [nio-8081-exec-3] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-03-20T00:17:06.501+05:30  INFO 24228 --- [HR Portal] [nio-8081-exec-3] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms

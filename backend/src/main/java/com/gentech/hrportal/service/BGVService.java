@@ -206,6 +206,17 @@ public class BGVService {
         return bgvRequestRepository.save(request);
     }
     
+    @Transactional
+    public void deleteBGVRequest(Long adminId, Long bgvRequestId) {
+        BGVRequest request = bgvRequestRepository.findById(bgvRequestId)
+            .orElseThrow(() -> new RuntimeException("BGV Request not found"));
+        
+        List<BGVDocument> documents = bgvDocumentRepository.findByBgvRequestId(bgvRequestId);
+        bgvDocumentRepository.deleteAll(documents);
+        
+        bgvRequestRepository.delete(request);
+    }
+    
     private String getDocumentDisplayName(BGVDocument.DocumentType type) {
         switch (type) {
             case AADHAR_CARD: return "Aadhar Card";

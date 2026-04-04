@@ -284,7 +284,8 @@ export const bgvAPI = {
   getPendingBGV: () => api.get('/bgv/pending'),
   getBGVDocuments: (bgvRequestId) => api.get(`/bgv/documents/${bgvRequestId}`),
   verifyDocument: (data) => api.post('/bgv/verify-document', data),
-  completeVerification: (bgvRequestId, data) => api.post(`/bgv/complete/${bgvRequestId}`, data),
+  completeVerification: (bgvRequestId, data) => api.post(`/bgv/complete/${bgvRequestId}?approved=${data.approved}&remarks=${encodeURIComponent(data.remarks || '')}`),
+  deleteBGV: (bgvRequestId) => api.delete(`/bgv/${bgvRequestId}`),
   
   // Employee
   getMyBGVStatus: () => api.get('/bgv/my-status'),

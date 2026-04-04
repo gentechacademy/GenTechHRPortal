@@ -25,6 +25,9 @@ public class SuperAdminService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private EmailService emailService;
+
     public List<User> getAllAdmins() {
         return userRepository.findByRole(User.Role.ADMIN);
     }
@@ -57,7 +60,18 @@ public class SuperAdminService {
                 .orElseThrow(() -> new RuntimeException("Company not found"));
         admin.setCompany(company);
 
-        return userRepository.save(admin);
+        User savedAdmin = userRepository.save(admin);
+
+        // Send welcome email with login credentials
+        try {
+            emailService.sendWelcomeEmail(savedAdmin, request.getPassword(), null);
+            System.out.println("✅ Welcome email sent to: " + savedAdmin.getEmail());
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send welcome email: " + e.getMessage());
+            // Don't throw exception - email failure shouldn't break admin creation
+        }
+
+        return savedAdmin;
     }
 
     @Transactional

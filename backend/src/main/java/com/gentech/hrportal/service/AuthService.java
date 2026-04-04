@@ -80,9 +80,14 @@ public class AuthService {
 
     @Transactional
     public void initiatePasswordReset(ForgotPasswordRequest request) {
-        System.out.println("🔍 Password reset requested for username: " + request.getUsername());
+        System.out.println("🔍 Password reset requested for: " + request.getUsername());
         
-        Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+        String identifier = request.getUsername();
+        Optional<User> userOpt = userRepository.findByUsername(identifier);
+        
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(identifier);
+        }
         
         if (userOpt.isPresent()) {
             User user = userOpt.get();

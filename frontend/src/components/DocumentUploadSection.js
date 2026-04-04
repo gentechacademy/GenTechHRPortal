@@ -71,6 +71,17 @@ const DocumentUploadSection = () => {
     }
   };
 
+  const handleViewDocument = (docUrl) => {
+    if (!docUrl) {
+      toast.error('File not available');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+    const downloadUrl = `${baseUrl}/api/files/download?path=${encodeURIComponent(docUrl)}&token=${token}`;
+    window.open(downloadUrl, '_blank');
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
 
@@ -198,14 +209,12 @@ const DocumentUploadSection = () => {
                     <td style={styles.td}>{getStatusBadge(doc.status)}</td>
                     <td style={styles.td}>
                       <div style={styles.actions}>
-                        <a
-                          href={doc.documentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleViewDocument(doc.documentUrl)}
                           style={styles.viewLink}
                         >
-                          View
-                        </a>
+                          👁 View
+                        </button>
                         {doc.status === 'PENDING' && (
                           <button
                             onClick={() => handleDelete(doc.id)}
@@ -368,6 +377,10 @@ const styles = {
     textDecoration: 'none',
     fontSize: '13px',
     fontWeight: '500',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '0',
   },
   deleteButton: {
     padding: '4px 12px',

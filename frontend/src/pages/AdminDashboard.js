@@ -3882,6 +3882,33 @@ const BGVManagementPage = () => {
     }
   };
 
+  const handleDeleteBGV = async (bgvId) => {
+    if (window.confirm('Are you sure you want to delete this BGV request and its associated documents?')) {
+      try {
+        await bgvAPI.deleteBGV(bgvId);
+        toast.success('BGV Request deleted successfully');
+        loadBGVRequests();
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to delete BGV request');
+      }
+    }
+  };
+
+  const handleApproveBGV = async (bgvId) => {
+    if (window.confirm('Are you sure you want to approve this BGV request directly?')) {
+      try {
+        await bgvAPI.completeVerification(bgvId, { approved: true, remarks: 'Directly approved by admin' });
+        toast.success('BGV Request approved successfully');
+        loadBGVRequests();
+        if (showVerifyModal && selectedBGV?.id === bgvId) {
+          setShowVerifyModal(false);
+        }
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to approve BGV request');
+      }
+    }
+  };
+
   const handleViewDocuments = async (bgv) => {
     try {
       const response = await bgvAPI.getBGVDocuments(bgv.id);
@@ -3969,12 +3996,34 @@ const BGVManagementPage = () => {
                     {new Date(bgv.initiatedAt).toLocaleDateString()}
                   </td>
                   <td style={styles.td}>
-                    <button
-                      style={styles.approveBtn}
-                      onClick={() => handleViewDocuments(bgv)}
-                    >
-                      View Docs
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        style={styles.viewBtn} // using viewBtn style which matches typical 'View' buttons
+                        onClick={() => handleViewDocuments(bgv)}
+                      >
+                        View Docs
+                      </button>
+                      
+                      {/* Approve Option for submitted BGV */}
+                      {(bgv.status === 'SUBMITTED' || bgv.status === 'UNDER_REVIEW' || bgv.status === 'PARTIAL_APPROVED') && (
+                        <button
+                          style={styles.approveBtn}
+                          onClick={() => handleApproveBGV(bgv.id)}
+                        >
+                          Approve
+                        </button>
+                      )}
+                      
+                      {/* Delete option for initiated/pending BGV */}
+                      {(bgv.status === 'PENDING' || bgv.status === 'IN_PROGRESS') && (
+                        <button
+                          style={styles.rejectBtn} // using rejectBtn style for delete
+                          onClick={() => handleDeleteBGV(bgv.id)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

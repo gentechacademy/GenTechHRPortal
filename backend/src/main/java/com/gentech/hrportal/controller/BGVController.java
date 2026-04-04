@@ -182,6 +182,19 @@ public class BGVController {
         }
     }
     
+    // Admin: Delete BGV request
+    @DeleteMapping("/{bgvRequestId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN') or hasRole('HR_MANAGER')")
+    public ResponseEntity<?> deleteBGVRequest(@PathVariable Long bgvRequestId) {
+        try {
+            Long adminId = getCurrentUserId();
+            bgvService.deleteBGVRequest(adminId, bgvRequestId);
+            return ResponseEntity.ok(new MessageResponse("BGV Request deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
+    
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
