@@ -260,10 +260,10 @@ const MyProfile = () => {
   }
 
   const fullProfilePicUrl = profile.profilePictureUrl 
-    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `http://localhost:8081${profile.profilePictureUrl}`)
+    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${profile.profilePictureUrl}`)
     : null;
   const fullCompanyLogoUrl = profile.companyLogoUrl
-    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `http://localhost:8081${profile.companyLogoUrl}`)
+    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${profile.companyLogoUrl}`)
     : null;
 
   const pendingRequests = editRequests.filter(r => r.status === 'PENDING');

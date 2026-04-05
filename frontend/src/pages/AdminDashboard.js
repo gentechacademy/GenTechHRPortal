@@ -2570,7 +2570,7 @@ const ManageEmployees = () => {
                 <div style={styles.previewContainer}>
                   {(() => {
                     const displayUrl = previewUrl || (formData.profilePictureUrl
-                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `http://localhost:8081${formData.profilePictureUrl}`)
+                      ? (formData.profilePictureUrl.startsWith('http') ? formData.profilePictureUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${formData.profilePictureUrl}`)
                       : null);
                     return displayUrl ? (
                       <img
@@ -2637,7 +2637,7 @@ const ManageEmployees = () => {
           <tbody>
             {employees.map((emp) => {
               const fullImageUrl = emp.profilePictureUrl
-                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `http://localhost:8081${emp.profilePictureUrl}`)
+                ? (emp.profilePictureUrl.startsWith('http') ? emp.profilePictureUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${emp.profilePictureUrl}`)
                 : null;
               return (
                 <tr key={emp.id} style={styles.tr}>
@@ -4110,7 +4110,7 @@ const BGVManagementPage = () => {
                     </td>
                     <td style={styles.td}>
                       {doc.fileUrl ? (
-                        <a href={`http://localhost:8081${doc.fileUrl}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${doc.fileUrl}`} target="_blank" rel="noopener noreferrer">
                           View
                         </a>
                       ) : (
@@ -4306,7 +4306,7 @@ const HRPoliciesPage = () => {
                       <button
                         onClick={() => {
                           const token = localStorage.getItem('token');
-                          const downloadUrl = `http://localhost:8081/api/files/download?path=${encodeURIComponent(policy.fileUrl)}&token=${token}`;
+                          const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(policy.fileUrl)}&token=${token}`;
                           window.open(downloadUrl, '_blank');
                         }}
                         style={styles.viewBtn}
