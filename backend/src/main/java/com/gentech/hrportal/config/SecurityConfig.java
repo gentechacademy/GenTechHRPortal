@@ -90,11 +90,15 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "https://gentechhrportalapp.onrender.com",
             "http://localhost:3000",
-            "http://127.0.0.1:3000"
+            "http://127.0.0.1:3000",
+            "http://YOUR_VM_IP",          // Replace with your VM IP
+            "http://YOUR_VM_IP:80",       // Replace with your VM IP
+            "*"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization","Content-Type","*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

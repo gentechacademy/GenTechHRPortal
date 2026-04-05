@@ -38,22 +38,33 @@ Complete step-by-step guide for deploying the GenTech HR Portal application on a
 
 ### Cloud Provider Firewall Rules
 
-**Google Cloud (GCP):**
-```bash
-# If gcloud is available
-sudo apt install -y google-cloud-sdk
-gcloud compute firewall-rules create allow-hr-portal \
-  --allow tcp:80,tcp:8081,tcp:5432 \
-  --source-ranges 0.0.0.0/0 \
-  --description "HR Portal ports"
-```
+**Google Cloud (GCP) - Foolproof UI Method (Recommended):**
+1. Go to the **VM instances** page in your Google Cloud Console.
+2. Click on your instance name (e.g., `hrportal`).
+3. Click the **EDIT** pencil icon at the top of the page.
+4. Scroll down to the **Firewalls** section.
+5. Check **BOTH** boxes for:
+   - `☑ Allow HTTP traffic`
+   - `☑ Allow HTTPS traffic`
+6. Click **Save** at the bottom.
 
-**Alternative - UFW (Ubuntu Firewall):**
+*(Advanced)* Custom Ports (like 8081 for Backend API):
+1. Search **Firewall (VPC network)** in the Google Cloud top bar.
+2. Click **Create Firewall Rule**.
+3. Fill out the form:
+   - **Name**: `allow-hr-portal-api`
+   - **Targets**: Change dropdown to **All instances in the network**
+   - **Source IPv4 ranges**: Type **`0.0.0.0/0`**
+   - **Protocols and ports**: Check **Specified protocols and ports**, check **TCP** and type **`8081, 5432`**
+4. Click **Create** at the bottom.
+
+**Alternative - UFW (Ubuntu Internal Firewall):**
+If your VM uses an internal firewall, run these inside the SSH terminal:
 ```bash
 sudo ufw allow 80/tcp
 sudo ufw allow 8081/tcp
 sudo ufw allow 5432/tcp
-sudo ufw enable
+sudo ufw reload
 sudo ufw status
 ```
 
@@ -98,32 +109,18 @@ git clone https://github.com/shivaranjeet/GenTechHRPortal.git
 cd GenTechHRPortal
 ```
 
-### Step 2: Project Structure
-
-Ensure your project has this structure:
-```
-GenTechHRPortal/
-├── backend/                  # Spring Boot application
-│   ├── src/main/java/        # Java source code
-│   ├── src/main/resources/   # Configurations
-│   ├── pom.xml              # Maven config
-│   └── Dockerfile           # To be created
-├── frontend/                 # React application
-│   ├── src/                 # React source code
-│   ├── package.json         # NPM config
-│   └── Dockerfile           # To be created
-└── docker-compose.yml       # To be created
-```
-
 ---
 
 ## Configuration
 
 ### Step 1: Create Backend Dockerfile
 
-Create `backend/Dockerfile`:
+Copy and paste this exact block into your terminal to safely wipe and configure your backend Dockerfile in one go.
 
-```dockerfile
+```bash
+cd ~/GenTechHRPortal
+
+cat << 'EOF' > backend/Dockerfile
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
@@ -140,15 +137,19 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]
+EOF
 ```
 
 ### Step 2: Create Frontend Dockerfile
 
-Create `frontend/Dockerfile`:
+Copy and paste this exact block into your terminal for the frontend setup:
 
-```dockerfile
+```bash
+cd ~/GenTechHRPortal
+
+cat << 'EOF' > frontend/Dockerfile
 FROM node:18-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -160,13 +161,17 @@ FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+EOF
 ```
 
 ### Step 3: Create docker-compose.yml
 
-Create `docker-compose.yml` in project root:
+Copy and paste this block into your terminal to create the main docker stack config:
 
-```yaml
+```bash
+cd ~/GenTechHRPortal
+
+cat << 'EOF' > docker-compose.yml
 services:
   postgres:
     image: postgres:15-alpine
@@ -220,16 +225,17 @@ volumes:
 networks:
   hr-portal-network:
     driver: bridge
+EOF
 ```
 
 ### Step 4: Create .env File
 
-Create `.env` file in project root:
+Create `.env` file in project root with your database, jwt, and email credentials:
 
 ```bash
 cd ~/GenTechHRPortal
 
-cat > .env << 'EOF'
+cat << 'EOF' > .env
 DB_PASSWORD=YourSecurePassword123
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
@@ -241,11 +247,17 @@ EOF
 chmod 600 .env
 ```
 
-**Important:** JWT_SECRET must be at least 32 characters long!
+**Important:** JWT_SECRET must be at least 32 characters long! Make sure to replace `MAIL_USERNAME` and `MAIL_PASSWORD` with your actual setup.
 
 ### Step 5: Update Backend SecurityConfig (CORS)
 
-Update `backend/src/main/java/com/gentech/hrportal/config/SecurityConfig.java`:
+You must open `SecurityConfig.java` to whitelist your VM IP address manually:
+
+```bash
+nano ~/GenTechHRPortal/backend/src/main/java/com/gentech/hrportal/config/SecurityConfig.java
+```
+
+Scroll through the file and replace the `corsConfigurationSource()` function with this one, and modify **YOUR_VM_IP** with your actual VM External IP:
 
 ```java
 @Bean
@@ -270,17 +282,24 @@ public CorsConfigurationSource corsConfigurationSource() {
     return source;
 }
 ```
+*(Save with `Ctrl + O` -> `Enter`, then exit with `Ctrl + X`)*
 
 **Replace `YOUR_VM_IP` with your actual VM IP address (e.g., 34.100.129.168).**
 
 ### Step 6: Update Frontend API URL
 
-Update `frontend/src/services/api.js`:
+Set your Frontend to target your VM's public IP address instead of localhost.
 
+```bash
+nano ~/GenTechHRPortal/frontend/src/services/api.js
+```
+
+Change the `API_URL` variable to point to your backend:
 ```javascript
 // Change from localhost to VM IP
 const API_URL = 'http://YOUR_VM_IP:8081/api';  // Replace with your VM IP
 ```
+*(Save with `Ctrl + O` -> `Enter`, then exit with `Ctrl + X`)*
 
 ---
 
@@ -311,7 +330,7 @@ sleep 120
 sudo docker-compose ps
 
 # Check backend logs
-sudo docker-compose logs backend --tail=20
+sudo docker-compose logs --tail=20 backend
 
 # Test API
 curl -X POST http://localhost:8081/api/auth/login \
@@ -335,13 +354,12 @@ Open browser and navigate to:
 
 **Solution:**
 ```bash
-# Open port in firewall
+# Open port in internal firewall (if applicable)
 sudo ufw allow 8081/tcp
 sudo ufw reload
 
-# Or for GCP
-# Go to GCP Console > VPC Network > Firewall > Create Rule
-# Allow TCP port 8081 from 0.0.0.0/0
+# Google Cloud Firewall Check:
+# Ensure you ticked "Allow HTTP traffic" on the VM Edit page AND created the custom VPC Firewall rule for port 8081 with Targets set to "All instances in the network".
 ```
 
 ### Issue 2: CORS Error
@@ -358,7 +376,9 @@ Update `SecurityConfig.java` to include your VM IP in `corsConfigurationSource()
 **Solution:**
 Update `.env` with longer JWT_SECRET (minimum 32 characters):
 ```bash
+cat << 'EOF' > .env
 JWT_SECRET=this-is-a-much-longer-secret-key-that-is-32-chars-long
+EOF
 ```
 
 Then restart backend:
