@@ -2,13 +2,20 @@ import axios from 'axios';
 
 // Use relative URL in development to leverage proxy (avoids CORS and is faster)
 // In production, use the full API URL
-const API_URL = process.env.NODE_ENV === 'development' 
-  ? '/api' 
-  : 'http://35.244.33.127:9090/api';
+// Use relative URL in development to leverage proxy (avoids CORS and is faster)
+// In production, use the full API URL
+const API_URL = process.env.REACT_APP_API_URL 
+  ? (process.env.REACT_APP_API_URL.endsWith('/api') ? process.env.REACT_APP_API_URL : `${process.env.REACT_APP_API_URL}/api`)
+  : (process.env.NODE_ENV === 'development' 
+      ? '/api' 
+      : `${window.location.protocol}//${window.location.hostname}:8081/api`);
+
+// Base media/download URL (without /api)
+export const MEDIA_BASE_URL = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}:8081`;
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 second timeout
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -260,10 +260,10 @@ const MyProfile = () => {
   }
 
   const fullProfilePicUrl = profile.profilePictureUrl 
-    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${profile.profilePictureUrl}`)
+    ? (profile.profilePictureUrl.startsWith('http') ? profile.profilePictureUrl : `${process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8081' : `${window.location.protocol}//${window.location.hostname}:8081`)}${profile.profilePictureUrl}`)
     : null;
   const fullCompanyLogoUrl = profile.companyLogoUrl
-    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${profile.companyLogoUrl}`)
+    ? (profile.companyLogoUrl.startsWith('http') ? profile.companyLogoUrl : `${process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8081' : `${window.location.protocol}//${window.location.hostname}:8081`)}${profile.companyLogoUrl}`)
     : null;
 
   const pendingRequests = editRequests.filter(r => r.status === 'PENDING');
@@ -4277,7 +4277,8 @@ const MyBGVPage = () => {
         toast.error('File URL not available');
         return;
       }
-      const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
+      const baseUrl = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8081' : `${window.location.protocol}//${window.location.hostname}:8081`);
+      const downloadUrl = `${baseUrl}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
       window.open(downloadUrl, '_blank');
     } catch (error) {
       toast.error('Error opening file: ' + error.message);
@@ -4641,7 +4642,8 @@ const MyPoliciesPage = () => {
         toast.error('File URL not available');
         return;
       }
-      const downloadUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
+      const baseUrl = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8081' : `${window.location.protocol}//${window.location.hostname}:8081`);
+      const downloadUrl = `${baseUrl}/api/files/download?path=${encodeURIComponent(fileUrl)}&token=${token}`;
       window.open(downloadUrl, '_blank');
     } catch (error) {
       toast.error('Error opening file: ' + error.message);
